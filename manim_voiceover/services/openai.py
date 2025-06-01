@@ -49,6 +49,8 @@ class OpenAIService(SpeechService):
         self,
         voice: str = "alloy",
         model: str = "tts-1-hd",
+        speed: float = 1.0,
+        instructions: str = None,
         transcription_model="base",
         **kwargs
     ):
@@ -64,6 +66,8 @@ class OpenAIService(SpeechService):
         prompt_ask_missing_extras("openai", "openai", "OpenAIService")
         self.voice = voice
         self.model = model
+        self.speed = speed
+        self.instructions = instructions
 
         SpeechService.__init__(self, transcription_model=transcription_model, **kwargs)
 
@@ -74,8 +78,8 @@ class OpenAIService(SpeechService):
         if cache_dir is None:
             cache_dir = self.cache_dir
 
-        speed = kwargs.get("speed", 1.0)
-        instructions = kwargs.get("instructions", None)
+        speed = kwargs.get("speed", self.speed)
+        instructions = kwargs.get("instructions", self.instructions)
 
         config = {
             "voice": self.voice,
