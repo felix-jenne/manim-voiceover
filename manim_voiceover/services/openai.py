@@ -75,19 +75,27 @@ class OpenAIService(SpeechService):
             cache_dir = self.cache_dir
 
         speed = kwargs.get("speed", 1.0)
+        instructions = kwargs.get("instructions", None)
 
-        if not (0.25 <= speed <= 4.0):
-            raise ValueError("The speed must be between 0.25 and 4.0.")
+        config = {
+            "voice": self.voice,
+            "model": self.model,
+        }
+
+        # For gpt-4o-mini-tts, use instructions instead of speed
+        if self.model == "gpt-4o-mini-tts":
+            config["instructions"] = instructions
+        else:
+            # For older models, validate speed parameter
+            if not (0.25 <= speed <= 4.0):
+                raise ValueError("The speed must be between 0.25 and 4.0.")
+            config["speed"] = speed
 
         input_text = remove_bookmarks(text)
         input_data = {
             "input_text": input_text,
             "service": "openai",
-            "config": {
-                "voice": self.voice,
-                "model": self.model,
-                "speed": speed,
-            },
+            "config": config,
         }
 
         cached_result = self.get_cached_result(input_data, cache_dir)
@@ -102,12 +110,20 @@ class OpenAIService(SpeechService):
         if os.getenv("OPENAI_API_KEY") is None:
             create_dotenv_openai()
 
-        response = openai.audio.speech.create(
-            model=self.model,
-            voice=self.voice,
-            input=input_text,
-            speed=speed,
-        )
+        # Prepare API call parameters
+        api_params = {
+            "model": self.model,
+            "voice": self.voice,
+            "input": input_text,
+        }
+        
+        if self.model == "gpt-4o-mini-tts":
+            if instructions is not None:
+                api_params["instructions"] = instructions
+        else:
+            api_params["speed"] = speed
+
+        response = openai.audio.speech.create(**api_params)
         response.stream_to_file(str(Path(cache_dir) / audio_path))
 
         json_dict = {
